@@ -304,7 +304,7 @@ inline decltype(auto) make_font(cairo_t* cairo, string&& fontname, double offset
   static bool fc_init{false};
   if (!fc_init && !(fc_init = FcInit())) {
     throw application_error("Could not load fontconfig");
-  } else if (FT_Init_FreeType(&g_ftlib) != FT_Err_Ok) {
+  } else if (g_ftlib == nullptr && FT_Init_FreeType(&g_ftlib) != FT_Err_Ok) {
     throw application_error("Could not load FreeType");
   }
 
