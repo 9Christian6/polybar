@@ -156,6 +156,12 @@ namespace tags {
 
   void dispatch::handle_control(renderer_interface& renderer, controltag ctrl) {
     switch (ctrl) {
+      case controltag::m:
+        m_action_ctxt.tooltip_open(m_ctxt->get_alignment(), renderer.get_x(*m_ctxt));
+        break;
+      case controltag::n:
+        m_action_ctxt.tooltip_close(m_ctxt->get_alignment(), renderer.get_x(*m_ctxt));
+        break;
       case controltag::R:
         m_ctxt->apply_reset();
         break;

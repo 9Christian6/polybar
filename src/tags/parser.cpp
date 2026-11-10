@@ -372,6 +372,10 @@ namespace tags {
         return controltag::R;
       case 't':
         return controltag::t;
+      case 'm':
+        return controltag::m;
+      case 'n':
+        return controltag::n;
       default:
         throw control_error(s);
     }

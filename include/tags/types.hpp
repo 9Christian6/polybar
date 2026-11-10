@@ -36,7 +36,9 @@ namespace tags {
   enum class controltag {
     NONE = 0,
     R, // Reset all open tags (B, F, T, o, u). Used at module edges
-    t  // special tag for trays
+    t, // special tag for trays
+    m, // Begin tooltip region (internal)
+    n  // End tooltip region (internal)
   };
 
   enum class color_type { RESET = 0, COLOR };

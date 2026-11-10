@@ -22,6 +22,7 @@ class config;
 class connection;
 class logger;
 class renderer;
+class tooltip;
 class screen;
 namespace legacy_tray {
 class tray_manager;
@@ -33,7 +34,8 @@ class dispatch;
 // }}}
 
 class bar : public xpp::event::sink<evt::button_press, evt::expose, evt::property_notify, evt::enter_notify,
-                evt::leave_notify, evt::motion_notify, evt::destroy_notify, evt::client_message, evt::configure_notify>,
+                evt::leave_notify, evt::motion_notify, evt::unmap_notify, evt::destroy_notify, evt::client_message,
+                evt::configure_notify>,
             public signal_receiver<SIGN_PRIORITY_BAR, signals::ui::dim_window> {
  public:
   using make_type = unique_ptr<bar>;
@@ -49,6 +51,8 @@ class bar : public xpp::event::sink<evt::button_press, evt::expose, evt::propert
 
   void parse(string&& data, bool force = false);
 
+  void set_tooltip_modules(const vector<string>& names);
+  void update_tooltip();
   void hide();
   void show();
   void toggle();
@@ -68,6 +72,7 @@ class bar : public xpp::event::sink<evt::button_press, evt::expose, evt::propert
 
   void handle(const evt::client_message& evt) override;
   void handle(const evt::destroy_notify& evt) override;
+  void handle(const evt::unmap_notify& evt) override;
   void handle(const evt::enter_notify& evt) override;
   void handle(const evt::leave_notify& evt) override;
   void handle(const evt::motion_notify& evt) override;
@@ -100,6 +105,7 @@ class bar : public xpp::event::sink<evt::button_press, evt::expose, evt::propert
   unique_ptr<tags::action_context> m_action_ctxt;
 
   bar_settings m_opts{};
+  unique_ptr<tooltip> m_tooltip;
 
   /**
    * Name of currently active cursor

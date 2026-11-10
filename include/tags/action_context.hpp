@@ -78,6 +78,9 @@ namespace tags {
   class action_context {
    public:
     void reset();
+    void tooltip_open(alignment align, double x);
+    void tooltip_close(alignment align, double x);
+    std::pair<int, std::pair<double, double>> tooltip_at(int x) const;
 
     action_t action_open(mousebtn btn, const string&& cmd, alignment align, double x);
     std::pair<action_t, mousebtn> action_close(mousebtn btn, alignment align, double x);
@@ -119,6 +122,7 @@ namespace tags {
      * The action_t type is an index into this vector.
      */
     std::vector<action_block> m_action_blocks;
+    std::vector<action_block> m_tooltip_blocks;
 
     /**
      * Stores the x-coordinate for the start of all the alignment blocks.

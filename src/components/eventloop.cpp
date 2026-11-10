@@ -39,6 +39,10 @@ namespace eventloop {
       case UV_NAMED_PIPE:
         static_cast<PipeHandle*>(handle->data)->close();
         break;
+      case UV_PROCESS:
+        // Process owners terminate children before loop teardown. Keep the handle
+        // open until libuv reaps the child and invokes its exit callback.
+        break;
       case UV_PREPARE:
         static_cast<PrepareHandle*>(handle->data)->close();
         break;

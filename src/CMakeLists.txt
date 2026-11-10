@@ -57,6 +57,7 @@ set(POLY_SOURCES
 
   ${src_dir}/cairo/utils.cpp
 
+  ${src_dir}/components/tooltip.cpp
   ${src_dir}/components/bar.cpp
   ${src_dir}/components/builder.cpp
   ${src_dir}/components/command_line.cpp
@@ -158,6 +159,7 @@ add_library(poly STATIC EXCLUDE_FROM_ALL ${POLY_SOURCES})
 target_include_directories(poly PUBLIC ${includes_dir})
 target_link_libraries(poly PUBLIC
   Threads::Threads
+  Xcb::SHAPE
   Cairo::CairoFC
   xpp
   LibUV::LibUV

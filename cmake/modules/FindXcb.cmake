@@ -18,6 +18,7 @@ set(XCB_known_components
   XCB
   RANDR
   COMPOSITE
+  SHAPE
   XKB
   XRM
   CURSOR)

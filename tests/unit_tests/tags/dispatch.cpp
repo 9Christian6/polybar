@@ -268,3 +268,17 @@ TEST_F(DispatchTest, actionOffsetBefore) {
   EXPECT_EQ(mousebtn::LEFT, blk.button);
   EXPECT_EQ("cmd", blk.cmd);
 }
+
+TEST(TooltipDispatch, FormatBoundsAndActionsRemainIndependent) {
+  logger log{loglevel::NONE};
+  action_context actions;
+  FakeRenderer renderer{actions};
+  dispatch dispatch{log, actions};
+  dispatch.parse(bar_settings{}, renderer, "%{l}  %{Pm}prefix %{A1:click:}label%{A} suffix%{Pn} gap");
+  EXPECT_EQ(-1, actions.tooltip_at(1).first);
+  EXPECT_EQ(0, actions.tooltip_at(2).first);
+  EXPECT_EQ(0, actions.tooltip_at(20).first);
+  EXPECT_EQ(-1, actions.tooltip_at(21).first);
+  EXPECT_EQ("click", actions.get_action(actions.has_action(mousebtn::LEFT, 9)));
+  EXPECT_EQ(tags::NO_ACTION, actions.has_action(mousebtn::LEFT, 2));
+}

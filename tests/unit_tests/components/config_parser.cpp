@@ -312,3 +312,9 @@ TEST_P(ParseEscapedValueTest, correctness) {
   EXPECT_EQ(GetParam().first, value);
 }
 // }}}
+
+TEST_F(ConfigParser, TooltipNewlineEscapeSurvivesParsing) {
+  line_t line{};
+  EXPECT_EQ("Hello\\nWorld", parser->parse_escaped_value(line, "Hello\\nWorld", "tooltip"));
+  EXPECT_EQ("Hello\\nWorld", parser->parse_escaped_value(line, "Hello\\\\nWorld", "tooltip"));
+}

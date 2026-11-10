@@ -491,6 +491,7 @@ void controller::process_inputdata(string&& cmd) {
 bool controller::process_update(bool force) {
   const bar_settings& bar{m_bar->settings()};
   string contents;
+  vector<string> tooltip_modules;
   string padding_left = builder::get_spacing_format_string(bar.padding.left);
   string padding_right = builder::get_spacing_format_string(bar.padding.right);
   string margin_left = builder::get_spacing_format_string(bar.module_margin.left);
@@ -545,7 +546,15 @@ bool controller::process_update(bool force) {
       }
 
       block_contents.reserve(module_contents.size());
+      bool tooltip = m_conf.get(module->name(), "type", ""s) == "custom/script" &&
+                     (m_conf.has(module->name(), "tooltip") || m_conf.has(module->name(), "tooltip-exec"));
+      if (tooltip) {
+        tooltip_modules.push_back(module->name());
+        block_contents += "%{Pm}";
+      }
       block_contents += module_contents;
+      if (tooltip)
+        block_contents += "%{Pn}";
 
       is_first = false;
     }
@@ -567,6 +576,7 @@ bool controller::process_update(bool force) {
 
   try {
     if (!m_writeback) {
+      m_bar->set_tooltip_modules(tooltip_modules);
       m_bar->parse(move(contents), force);
     } else {
       std::cout << contents << std::endl;

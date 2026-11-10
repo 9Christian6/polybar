@@ -5,6 +5,7 @@
 #include "components/config.hpp"
 #include "components/renderer.hpp"
 #include "components/screen.hpp"
+#include "components/tooltip.hpp"
 #include "components/types.hpp"
 #include "drawtypes/label.hpp"
 #include "events/signal.hpp"
@@ -393,6 +394,7 @@ void bar::parse(string&& data, bool force) {
   } else if (!m_visible) {
     return m_log.trace("bar: Ignoring update (invisible)");
   } else if (unchanged) {
+    update_tooltip();
     return m_log.trace("bar: Ignoring update (unchanged)");
   }
 
@@ -419,6 +421,7 @@ void bar::parse(string&& data, bool force) {
   }
 
   m_renderer->end();
+  update_tooltip();
 
   m_dblclicks.clear();
   for (auto&& action : m_opts.actions) {
@@ -428,10 +431,53 @@ void bar::parse(string&& data, bool force) {
   }
 }
 
+void bar::set_tooltip_modules(const vector<string>& names) {
+  if (m_tooltip)
+    m_tooltip->configure(names);
+  if (!names.empty()) {
+    m_connection.ensure_event_mask(m_opts.x_data.window,
+        XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_POINTER_MOTION);
+  }
+}
+
+void bar::update_tooltip() {
+  if (!m_tooltip || !m_visible || !m_tooltip->enabled())
+    return;
+  // Follow the actual pointer window path, so rerenders cannot show a tooltip
+  // beneath an overlapping window or while the bar is unmapped by the WM.
+  xcb_window_t child = m_connection.root();
+  bool over_bar = false;
+  for (int depth = 0; child != XCB_NONE && depth < 32; ++depth) {
+    if (child == m_opts.x_data.window) {
+      over_bar = true;
+      break;
+    }
+    auto pointer = m_connection.query_pointer(child);
+    if (!pointer.get())
+      break;
+    child = pointer->child;
+  }
+  if (!over_bar) {
+    m_tooltip->leave();
+    return;
+  }
+  auto pointer = m_connection.query_pointer(m_opts.x_data.window);
+  if (!pointer.get() || !pointer->same_screen || pointer->win_y < 0 || pointer->win_y >= int(m_opts.size.h) ||
+      pointer->win_x < 0 || pointer->win_x >= int(m_opts.size.w)) {
+    m_tooltip->leave();
+    return;
+  }
+  auto region = m_action_ctxt->tooltip_at(pointer->win_x);
+  m_log.trace("bar: Tooltip region %d at x=%d", region.first, pointer->win_x);
+  m_tooltip->hover(region.first, region.second.first, region.second.second);
+}
+
 /**
  * Hide the bar by unmapping its X window
  */
 void bar::hide() {
+  if (m_tooltip)
+    m_tooltip->leave();
   if (!m_visible) {
     return;
   }
@@ -696,10 +742,20 @@ void bar::handle(const evt::client_message& evt) {
 }
 
 /**
+ * Event handler for XCB_UNMAP_NOTIFY events
+ */
+void bar::handle(const evt::unmap_notify& evt) {
+  if (evt->window == m_opts.x_data.window && m_tooltip)
+    m_tooltip->leave();
+}
+
+/**
  * Event handler for XCB_DESTROY_NOTIFY events
  */
 void bar::handle(const evt::destroy_notify& evt) {
   if (evt->window == m_opts.x_data.window) {
+    if (m_tooltip)
+      m_tooltip->leave();
     m_connection.disconnect();
   }
 }
@@ -710,7 +766,9 @@ void bar::handle(const evt::destroy_notify& evt) {
  * Used to brighten the window by setting the
  * _NET_WM_WINDOW_OPACITY atom value
  */
-void bar::handle(const evt::enter_notify&) {
+void bar::handle(const evt::enter_notify& evt) {
+  if (evt->event == m_opts.x_data.window)
+    update_tooltip();
   if (m_opts.dimmed) {
     m_dim_timer->start(25, 0, [this]() {
       m_opts.dimmed = false;
@@ -727,7 +785,9 @@ void bar::handle(const evt::enter_notify&) {
  * Used to dim the window by setting the
  * _NET_WM_WINDOW_OPACITY atom value
  */
-void bar::handle(const evt::leave_notify&) {
+void bar::handle(const evt::leave_notify& evt) {
+  if (evt->event == m_opts.x_data.window && m_tooltip)
+    m_tooltip->leave();
   // Only trigger dimming, if the dim-value is not fully opaque.
   if (m_opts.dimvalue < 1.0) {
     if (!m_opts.dimmed) {
@@ -745,6 +805,8 @@ void bar::handle(const evt::leave_notify&) {
  * Used to change the cursor depending on the module
  */
 void bar::handle(const evt::motion_notify& evt) {
+  if (evt->event == m_opts.x_data.window)
+    update_tooltip();
   m_log.trace("bar: Detected motion: %i at pos(%i, %i)", evt->detail, evt->event_x, evt->event_y);
 #if WITH_XCURSOR
   int motion_pos = evt->event_x;
@@ -890,6 +952,8 @@ void bar::handle(const evt::configure_notify& evt) {
   if (evt->window != m_opts.x_data.window) {
     return;
   }
+  if (m_tooltip)
+    m_tooltip->leave();
   // The absolute position of the window in the root may be different after configuration is done
   // (for example, because the parent is not positioned at 0/0 in the root window).
   // Notify components that the geometry may have changed (used by the background manager for example).
@@ -904,6 +968,7 @@ void bar::start(const string& tray_module_name) {
   m_opts.x_data.visual = m_renderer->visual();
   m_opts.x_data.depth = m_renderer->depth();
 
+  m_tooltip = std::make_unique<tooltip>(m_connection, m_loop, m_conf, m_log, m_opts);
   // Subscribe to window enter and leave events
   // if we should dim the window
   if (m_opts.dimvalue != 1.0) {

@@ -78,8 +78,8 @@ if (ENABLE_PULSEAUDIO)
   set(PULSEAUDIO_VERSION ${LibPulse_VERSION})
 endif()
 
-# xcomposite is required
-list(APPEND XORG_EXTENSIONS COMPOSITE)
+# Composite and Shape (input-transparent tooltip windows) are required
+list(APPEND XORG_EXTENSIONS COMPOSITE SHAPE)
 if (WITH_XKB)
   list(APPEND XORG_EXTENSIONS XKB)
 endif()

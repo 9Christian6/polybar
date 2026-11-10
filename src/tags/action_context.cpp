@@ -8,6 +8,32 @@ namespace tags {
 
   void action_context::reset() {
     m_action_blocks.clear();
+    m_tooltip_blocks.clear();
+  }
+
+  void action_context::tooltip_open(alignment align, double x) {
+    m_tooltip_blocks.emplace_back("", mousebtn::NONE, align, true);
+    m_tooltip_blocks.back().start_x = m_tooltip_blocks.back().end_x = x;
+  }
+
+  void action_context::tooltip_close(alignment align, double x) {
+    if (!m_tooltip_blocks.empty()) {
+      auto& block = m_tooltip_blocks.back();
+      block.is_open = false;
+      if (block.align == align)
+        block.end_x = std::max(block.end_x, x);
+    }
+  }
+
+  std::pair<int, std::pair<double, double>> action_context::tooltip_at(int x) const {
+    for (int i = static_cast<int>(m_tooltip_blocks.size()) - 1; i >= 0; --i) {
+      const auto& block = m_tooltip_blocks[i];
+      double start = m_align_start.at(block.align);
+      if (!block.is_open && block.test(start, x)) {
+        return {i, {start + block.start_x, start + block.end_x}};
+      }
+    }
+    return {-1, {0, 0}};
   }
 
   action_t action_context::action_open(mousebtn btn, const string&& cmd, alignment align, double x) {
@@ -46,6 +72,12 @@ namespace tags {
 
   void action_context::compensate_for_negative_move(alignment a, double old_x, double new_x) {
     assert(new_x < old_x);
+    for (auto& block : m_tooltip_blocks) {
+      if (block.is_open && block.align == a) {
+        block.start_x = std::min(block.start_x, new_x);
+        block.end_x = std::max(block.end_x, old_x);
+      }
+    }
     for (auto& block : m_action_blocks) {
       if (block.is_open && block.align == a) {
         // Move back the start position if a smaller position is observed
