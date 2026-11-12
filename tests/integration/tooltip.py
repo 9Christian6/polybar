@@ -179,6 +179,25 @@ tooltip = Second module
         self.x.sync()
         wait_for(lambda: not self.popup())
 
+    def test_visible_text_has_balanced_vertical_padding(self):
+        self.start("tooltip = HELLO\\nGrüße → gyp\\nLast line")
+        self.move(10)
+        window = wait_for(self.popup)
+        rect = window.get_geometry()
+        image = window.get_image(0, 0, rect.width, rect.height, X.ZPixmap, 0xffffffff)
+        # The isolated server uses 24-bit TrueColor with four bytes per pixel.
+        # Ignore the white border and find the actual antialiased text pixels.
+        pixels = memoryview(image.data)
+        stride = len(pixels) // rect.height
+        rows = [y for y in range(1, rect.height - 1)
+                if any(max(pixels[y * stride + x * 4:y * stride + x * 4 + 3]) > 85
+                       for x in range(1, rect.width - 1))]
+        self.assertTrue(rows)
+        top = rows[0] - 1
+        bottom = rect.height - 2 - rows[-1]
+        self.assertLessEqual(abs(top - bottom), 1, f"Text padding: top={top}, bottom={bottom}")
+        self.assertGreaterEqual(min(top, bottom), 10)
+
     def test_static_delay_input_and_transitions(self):
         self.start()
         focus = self.x.get_input_focus().focus

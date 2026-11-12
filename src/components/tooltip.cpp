@@ -320,6 +320,8 @@ void tooltip::render() {
   if (!string_util::utf8_to_ucs4(utf8, chars))
     m_log.warn("%s: Dropping invalid UTF-8 in tooltip", m_active);
   double x = inset, y = inset, used = 0;
+  double ink_top = 0, ink_bottom = 0;
+  bool has_ink = false;
   for (auto ch : chars) {
     if (ch.codepoint == '\r')
       continue;
@@ -349,11 +351,27 @@ void tooltip::render() {
     if (y + line_height > max_height - inset)
       break;
     glyphs.push_back({text, font, x, y + ascent});
+    if (ext.height > 0) {
+      double top = y + ascent + ext.y_bearing;
+      double bottom = top + ext.height;
+      ink_top = has_ink ? std::min(ink_top, top) : top;
+      ink_bottom = has_ink ? std::max(ink_bottom, bottom) : bottom;
+      has_ink = true;
+    }
     x += advance;
     used = std::max(used, x - inset);
   }
   int width = std::min(max_width, std::max(1, int(std::ceil(used)) + 2 * inset));
   int height = std::min(max_height, std::max(1, int(std::ceil(y + line_height)) + inset));
+  if (has_ink) {
+    // Font ascent/descent includes unequal whitespace above and below the ink.
+    // Pad the visible text bounds instead, retaining the baseline spacing between lines.
+    double top = std::floor(ink_top);
+    for (auto& glyph : glyphs) {
+      glyph.y += inset - top;
+    }
+    height = std::min(max_height, int(std::ceil(ink_bottom) - top) + 2 * inset);
+  }
   const auto color = [&](rgba value) { cairo_set_source_rgb(cr, value.red_d(), value.green_d(), value.blue_d()); };
   color(m_style.border_color);
   cairo_paint(cr);
