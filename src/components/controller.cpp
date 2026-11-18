@@ -546,9 +546,10 @@ bool controller::process_update(bool force) {
       }
 
       block_contents.reserve(module_contents.size());
-      const auto type = m_conf.get(module->name(), "type", ""s);
-      bool tooltip = (type == "custom/script" || type == "custom/ipc") &&
-                     (m_conf.has(module->name(), "tooltip") || m_conf.has(module->name(), "tooltip-exec"));
+      // Tooltip hit regions are renderer-based, so every module type can use
+      // them. Restricting this to custom modules silently ignored tooltips on
+      // built-in modules such as internal/network.
+      bool tooltip = m_conf.has(module->name(), "tooltip") || m_conf.has(module->name(), "tooltip-exec");
       if (tooltip) {
         tooltip_modules.push_back(module->name());
         block_contents += "%{Pm}";
