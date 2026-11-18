@@ -68,17 +68,17 @@ struct tooltip::job {
 
 tooltip::tooltip(
     connection& conn, eventloop::loop& loop, const config& conf, const logger& log, const bar_settings& bar)
-    : m_connection(conn)
-    , m_loop(loop)
-    , m_conf(conf)
-    , m_log(log)
+  : m_connection(conn)
+  , m_loop(loop)
+  , m_conf(conf)
+  , m_log(log)
     , m_bar(bar)
     , m_timer(loop.handle<eventloop::TimerHandle>()) {}
 
-tooltip::~tooltip() {
-  leave();
-  m_timer->close();
-}
+    tooltip::~tooltip() {
+      leave();
+      m_timer->close();
+    }
 
 void tooltip::configure(const vector<string>& names) {
   for (const auto& name : names) {
@@ -154,7 +154,7 @@ void tooltip::execute() {
   task->pipe = m_loop.handle<eventloop::PipeHandle>();
   string shell = env_util::get("POLYBAR_SHELL", "/bin/sh");
   char* args[] = {
-      const_cast<char*>(shell.c_str()), const_cast<char*>("-c"), const_cast<char*>(m_style.command.c_str()), nullptr};
+    const_cast<char*>(shell.c_str()), const_cast<char*>("-c"), const_cast<char*>(m_style.command.c_str()), nullptr};
   uv_stdio_container_t stdio[3]{};
   stdio[0].flags = UV_IGNORE;
   stdio[1].flags = static_cast<uv_stdio_flags>(UV_CREATE_PIPE | UV_WRITABLE_PIPE);
@@ -189,38 +189,38 @@ void tooltip::execute() {
   }
   m_job = task;
   m_timer->start(m_style.timeout, 0, [this]() {
-    m_log.warn("%s: tooltip-exec timed out after %d ms", m_active, m_style.timeout);
-    string active = m_active;
-    leave();
-    m_active = active; // A failed entry must not start again on pointer motion.
-  });
+      m_log.warn("%s: tooltip-exec timed out after %d ms", m_active, m_style.timeout);
+      string active = m_active;
+      leave();
+      m_active = active; // A failed entry must not start again on pointer motion.
+      });
   task->pipe->read_start(
       [task](const eventloop::ReadEvent& event) {
-        if (!task->owner)
-          return;
-        if (task->output.size() + event.len > 65536) {
-          auto* owner = task->owner;
-          owner->m_log.warn("%s: tooltip-exec exceeded 64 KiB output limit", owner->m_active);
-          string active = owner->m_active;
-          owner->leave();
-          owner->m_active = active;
-          return;
-        }
-        task->output.append(event.data, event.len);
+      if (!task->owner)
+      return;
+      if (task->output.size() + event.len > 65536) {
+      auto* owner = task->owner;
+      owner->m_log.warn("%s: tooltip-exec exceeded 64 KiB output limit", owner->m_active);
+      string active = owner->m_active;
+      owner->leave();
+      owner->m_active = active;
+      return;
+      }
+      task->output.append(event.data, event.len);
       },
       [task]() {
-        task->eof = true;
-        if (task->owner)
-          task->owner->complete(task);
+      task->eof = true;
+      if (task->owner)
+      task->owner->complete(task);
       },
       [task](const eventloop::ErrorEvent&) {
-        if (task->owner) {
-          auto* owner = task->owner;
-          owner->m_log.warn("%s: Cannot read tooltip-exec output", owner->m_active);
-          string active = owner->m_active;
-          owner->leave();
-          owner->m_active = active;
-        }
+      if (task->owner) {
+        auto* owner = task->owner;
+        owner->m_log.warn("%s: Cannot read tooltip-exec output", owner->m_active);
+        string active = owner->m_active;
+        owner->leave();
+        owner->m_active = active;
+      }
       });
 }
 
@@ -250,10 +250,10 @@ xcb_rectangle_t tooltip::workarea() const {
     return reply->atom;
   };
   auto desktop =
-      m_connection.get_property(false, m_connection.root(), atom("_NET_CURRENT_DESKTOP"), XCB_ATOM_CARDINAL, 0, 1);
+    m_connection.get_property(false, m_connection.root(), atom("_NET_CURRENT_DESKTOP"), XCB_ATOM_CARDINAL, 0, 1);
   uint32_t index = desktop.get() && desktop->value_len == 1 ? *desktop.value<uint32_t>().begin() : 0;
   auto work =
-      m_connection.get_property(false, m_connection.root(), atom("_NET_WORKAREA"), XCB_ATOM_CARDINAL, index * 4, 4);
+    m_connection.get_property(false, m_connection.root(), atom("_NET_WORKAREA"), XCB_ATOM_CARDINAL, index * 4, 4);
   if (work.get() && work->value_len == 4) {
     auto values = work.value<uint32_t>();
     auto it = values.begin();
@@ -406,17 +406,17 @@ void tooltip::render() {
         m_connection, XCB_PROP_MODE_REPLACE, m_window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, name.size(), name.data());
     auto type_atom = m_connection.intern_atom(false, strlen("_NET_WM_WINDOW_TYPE"), "_NET_WM_WINDOW_TYPE");
     auto tooltip_atom =
-        m_connection.intern_atom(false, strlen("_NET_WM_WINDOW_TYPE_TOOLTIP"), "_NET_WM_WINDOW_TYPE_TOOLTIP");
+      m_connection.intern_atom(false, strlen("_NET_WM_WINDOW_TYPE_TOOLTIP"), "_NET_WM_WINDOW_TYPE_TOOLTIP");
     xcb_atom_t type = tooltip_atom->atom;
     xcb_change_property(m_connection, XCB_PROP_MODE_REPLACE, m_window, type_atom->atom, XCB_ATOM_ATOM, 32, 1, &type);
     xcb_shape_rectangles(
         m_connection, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_INPUT, XCB_CLIP_ORDERING_UNSORTED, m_window, 0, 0, 0, nullptr);
   }
   uint32_t geometry[] = {
-      uint32_t(int32_t(rect.x)), uint32_t(int32_t(rect.y)), rect.width, rect.height, XCB_STACK_MODE_ABOVE};
+    uint32_t(int32_t(rect.x)), uint32_t(int32_t(rect.y)), rect.width, rect.height, XCB_STACK_MODE_ABOVE};
   xcb_configure_window(m_connection, m_window,
       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
-          XCB_CONFIG_WINDOW_STACK_MODE,
+      XCB_CONFIG_WINDOW_STACK_MODE,
       geometry);
   // A background pixmap preserves pixels across expose events without another event sink.
   auto pixmap = m_connection.generate_id();
