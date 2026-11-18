@@ -5,7 +5,7 @@ Modules
    :maxdepth: 1
 
    System Tray <tray>
-   Script hover tooltips <script-tooltips>
+   Script and IPC hover tooltips <script-tooltips>
 
    Alsa <https://github.com/polybar/polybar/wiki/Module:-alsa>
    Backlight <https://github.com/polybar/polybar/wiki/Module:-backlight>

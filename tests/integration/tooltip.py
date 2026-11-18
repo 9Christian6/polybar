@@ -99,7 +99,8 @@ class TooltipTest(unittest.TestCase):
         self.log.flush()
         return (self.path / "polybar.log").read_text()
 
-    def start(self, options="tooltip = Hello\\nGrüße → UTF-8", bottom=False, tail=False, monitor="", width=800):
+    def start(self, options="tooltip = Hello\\nGrüße → UTF-8", bottom=False, tail=False, monitor="", width=800,
+              subject_type="custom/script"):
         options = "\n".join(line.replace("\\", "\\\\") if line.startswith("tooltip-exec =") else line
                             for line in options.splitlines())
         conf = self.path / "config.ini"
@@ -121,7 +122,9 @@ padding = 0
 enable-ipc = true
 wm-name = polybar-tooltip-test
 [module/subject]
-type = custom/script
+type = {subject_type}
+initial = 1
+hook-0 = echo OK
 exec = {'tail -n +1 -f' if tail else 'cat'} {self.path / 'label'}
 tail = {'true' if tail else 'false'}
 interval = 0.1
@@ -321,6 +324,43 @@ tooltip = Second module
         self.process.terminate()
         self.process.wait(timeout=5)
         wait_for(lambda: not self.popup())
+
+    def check_continuously_updated_module(self, subject_type):
+        self.start(f"tooltip-exec = echo run >> {self.path / 'runs'}; sleep 0.15; echo Details\n"
+                   "tooltip-delay = 200", subject_type=subject_type)
+        self.move(10)
+        msg = str(Path(ARGS.polybar).with_name("polybar-msg"))
+        popup_id = None
+        redraws = self.logs().count("Redrawing bar window")
+        deadline = time.monotonic() + 1.3
+        counter = 0
+        while time.monotonic() < deadline:
+            # Alternate widths as well as text while the pointer remains inside
+            # the module. Updates must preserve both pending and visible tooltips.
+            text = str(counter) + (" longer" if counter % 2 else "")
+            if subject_type == "custom/ipc":
+                subprocess.run([msg, "-p", str(self.process.pid), "action", f"#subject.send.{text}"],
+                               env=self.env, check=True, stdout=subprocess.DEVNULL)
+            else:
+                (self.path / "label").write_text(text + "\n")
+            window = self.popup()
+            if window:
+                if popup_id is not None:
+                    self.assertEqual(popup_id, window.id)
+                popup_id = window.id
+            counter += 1
+            time.sleep(0.05)
+        self.assertIsNotNone(popup_id, "Tooltip never appeared while updates continued")
+        self.assertIsNotNone(self.popup())
+        self.assertEqual(["run"], (self.path / "runs").read_text().splitlines())
+        self.assertGreater(self.logs().count("Redrawing bar window") - redraws, 5)
+        self.exit()
+
+    def test_continuous_script_updates_preserve_hover(self):
+        self.check_continuously_updated_module("custom/script")
+
+    def test_continuous_ipc_updates_preserve_hover(self):
+        self.check_continuously_updated_module("custom/ipc")
 
     def test_slow_command_keeps_bar_responsive(self):
         self.dynamic("sleep 0.5; printf 'Completed\\n'")

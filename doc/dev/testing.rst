@@ -40,7 +40,7 @@ desktop session. Build ``polybar`` and ``polybar-msg`` first, then run:
 Pass ``--xvfb /path/to/Xvfb`` to use a server outside ``PATH``. Tests cover delay
 cancellation, hover transitions, focus and input transparency, click/scroll
 regression, UTF-8 and multiple lines, command completion/failure/timeout/output
-limits, once-per-entry execution, responsive updates during execution, dynamic
+limits, once-per-entry execution, responsive updates during execution, continuous script and IPC updates, dynamic
 module widths, bottom placement, tail mode, bar hiding, and shutdown cleanup.
 When ``xrandr`` and RandR monitor support are available, a virtual monitor with a
 nonzero origin also checks monitor clamping. Numerical unit tests additionally

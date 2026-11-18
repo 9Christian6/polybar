@@ -1,8 +1,8 @@
-Script hover tooltips
-=====================
+Script and IPC hover tooltips
+=============================
 
-Modules of type ``custom/script`` can show a native tooltip with information
-independent of their normal ``exec`` output. Hover anywhere over the module's
+Modules of type ``custom/script`` or ``custom/ipc`` can show a native tooltip
+with information independent of their normal bar label. Hover anywhere over the module's
 rendered format, including prefix, suffix, and padding. Leaving the module or
 hiding the bar cancels pending work and hides the popup immediately. Modules
 without either content option keep their existing behavior.
@@ -76,7 +76,8 @@ excess output, leaving the module, hiding the bar, and shutdown kill the command
 process group and discard late results. Scripts that deliberately detach into a
 separate session are outside this process group; tooltip commands should not
 launch daemons. Moving inside the same module or rerendering it does not rerun the
-command or reset the delay. Reentry runs it again.
+command or reset the delay. This includes frequent script refreshes and IPC
+``send`` updates, even when the label changes width. Reentry runs it again.
 
 The popup is centered over the module's current pixel bounds, positioned below
 top bars and above bottom bars, then clamped to the intersection of the selected
@@ -124,3 +125,15 @@ For a self-contained dynamic example, use:
    exec = echo Details
    interval = 60
    tooltip-exec = printf 'Line 1\\nLine 2\\n'
+
+An IPC module supports the same tooltip options. For example:
+
+.. code-block:: ini
+
+   [module/timerIPC]
+   type = custom/ipc
+   initial = 1
+   hook-0 = echo Ready
+   tooltip-exec = echo "Timer details"
+
+Update its bar label independently with ``polybar-msg action '#timerIPC.send.00:59'``.

@@ -546,7 +546,8 @@ bool controller::process_update(bool force) {
       }
 
       block_contents.reserve(module_contents.size());
-      bool tooltip = m_conf.get(module->name(), "type", ""s) == "custom/script" &&
+      const auto type = m_conf.get(module->name(), "type", ""s);
+      bool tooltip = (type == "custom/script" || type == "custom/ipc") &&
                      (m_conf.has(module->name(), "tooltip") || m_conf.has(module->name(), "tooltip-exec"));
       if (tooltip) {
         tooltip_modules.push_back(module->name());
