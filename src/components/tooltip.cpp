@@ -379,7 +379,6 @@ void tooltip::render() {
   // color(m_style.border_color);
   // cairo_paint(cr);
   // int border = std::min(m_style.border, std::min(width, height) / 2);
-  // color(m_style.background);
   // cairo_rectangle(cr, border, border, width - 2 * border, height - 2 * border);
   // cairo_fill(cr);
   const auto color = [&](rgba value) {
@@ -397,8 +396,7 @@ void tooltip::render() {
 
   int border = std::min(m_style.border, std::min(width, height) / 2);
 
-  // color(m_style.background);
-  cairo_set_source_rgba(cr, 1., 0., 1.,0.5);
+  color(m_style.background);
   cairo_rectangle(cr, border, border, width - 2 * border, height - 2 * border);
   cairo_fill(cr);
 
