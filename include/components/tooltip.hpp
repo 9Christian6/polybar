@@ -17,7 +17,8 @@ struct tooltip_options {
   string text, command;
   bool dynamic{false};
   int delay{350}, timeout{2000}, max_width{400}, max_height{300}, offset{8}, padding{10}, border{1};
-  rgba background{0xff000000}, foreground{0xffffffff}, border_color{0xffffffff};
+  float opacity{0.6};
+  rgba background{0x99000000}, foreground{0xffffffff}, border_color{0xffffffff};
 };
 
 // All coordinates are root coordinates, including monitors with nonzero origins.

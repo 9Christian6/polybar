@@ -12,6 +12,7 @@ xcb_atom_t _NET_WM_VISIBLE_NAME;
 xcb_atom_t _NET_WM_WINDOW_TYPE;
 xcb_atom_t _NET_WM_WINDOW_TYPE_DOCK;
 xcb_atom_t _NET_WM_WINDOW_TYPE_NORMAL;
+xcb_atom_t _NET_WM_WINDOW_TYPE_TOOLTIP;
 xcb_atom_t _NET_WM_PID;
 xcb_atom_t _NET_WM_STATE;
 xcb_atom_t _NET_WM_STATE_STICKY;
@@ -43,7 +44,7 @@ xcb_atom_t WM_NAME;
 xcb_atom_t WM_CLASS;
 
 // clang-format off
-std::array<cached_atom, 38> ATOMS = {{
+std::array<cached_atom, 39> ATOMS = {{
   {"_NET_SUPPORTED", _NET_SUPPORTED},
   {"_NET_CURRENT_DESKTOP", _NET_CURRENT_DESKTOP},
   {"_NET_ACTIVE_WINDOW", _NET_ACTIVE_WINDOW},
@@ -53,6 +54,7 @@ std::array<cached_atom, 38> ATOMS = {{
   {"_NET_WM_WINDOW_TYPE", _NET_WM_WINDOW_TYPE},
   {"_NET_WM_WINDOW_TYPE_DOCK", _NET_WM_WINDOW_TYPE_DOCK},
   {"_NET_WM_WINDOW_TYPE_NORMAL", _NET_WM_WINDOW_TYPE_NORMAL},
+  {"_NET_WM_WINDOW_TYPE_TOOLTIP", _NET_WM_WINDOW_TYPE_TOOLTIP},
   {"_NET_WM_PID", _NET_WM_PID},
   {"_NET_WM_STATE", _NET_WM_STATE},
   {"_NET_WM_STATE_STICKY", _NET_WM_STATE_STICKY},

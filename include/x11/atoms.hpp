@@ -10,7 +10,7 @@ struct cached_atom {
   xcb_atom_t& atom;
 };
 
-extern std::array<cached_atom, 38> ATOMS;
+extern std::array<cached_atom, 39> ATOMS;
 
 extern xcb_atom_t _NET_SUPPORTED;
 extern xcb_atom_t _NET_CURRENT_DESKTOP;
@@ -21,6 +21,7 @@ extern xcb_atom_t _NET_WM_VISIBLE_NAME;
 extern xcb_atom_t _NET_WM_WINDOW_TYPE;
 extern xcb_atom_t _NET_WM_WINDOW_TYPE_DOCK;
 extern xcb_atom_t _NET_WM_WINDOW_TYPE_NORMAL;
+extern xcb_atom_t _NET_WM_WINDOW_TYPE_TOOLTIP;
 extern xcb_atom_t _NET_WM_PID;
 extern xcb_atom_t _NET_WM_STATE;
 extern xcb_atom_t _NET_WM_STATE_STICKY;

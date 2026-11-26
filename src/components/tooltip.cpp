@@ -1,5 +1,6 @@
 #include "components/tooltip.hpp"
 
+#include <cairo.h>
 #include <cairo/cairo-xcb.h>
 #include <signal.h>
 #include <xcb/shape.h>
@@ -12,6 +13,7 @@
 #include "utils/env.hpp"
 #include "utils/string.hpp"
 #include "x11/connection.hpp"
+#include "x11/atoms.hpp"
 #include "x11/extensions/randr.hpp"
 
 POLYBAR_NS
@@ -290,7 +292,8 @@ void tooltip::render() {
   int inset = std::min(m_style.padding + m_style.border, std::max(0, (std::min(max_width, max_height) - 1) / 2));
   // Layout onto an image first; the same font infrastructure used by the bar
   // measures each UTF-8 codepoint, with fallback fonts, before wrapping.
-  auto surface = cairo_image_surface_create(CAIRO_FORMAT_RGB24, max_width, max_height);
+  // auto surface = cairo_image_surface_create(CAIRO_FORMAT_RGB24, max_width, max_height);
+  auto surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, max_width, max_height);
   scope_util::on_exit surface_guard([surface] { cairo_surface_destroy(surface); });
   auto cr = cairo_create(surface);
   scope_util::on_exit context_guard([cr] { cairo_destroy(cr); });
@@ -372,13 +375,34 @@ void tooltip::render() {
     }
     height = std::min(max_height, int(std::ceil(ink_bottom) - top) + 2 * inset);
   }
-  const auto color = [&](rgba value) { cairo_set_source_rgb(cr, value.red_d(), value.green_d(), value.blue_d()); };
+  // const auto color = [&](rgba value) { cairo_set_source_rgb(cr, value.red_d(), value.green_d(), value.blue_d()); };
+  // color(m_style.border_color);
+  // cairo_paint(cr);
+  // int border = std::min(m_style.border, std::min(width, height) / 2);
+  // color(m_style.background);
+  // cairo_rectangle(cr, border, border, width - 2 * border, height - 2 * border);
+  // cairo_fill(cr);
+  const auto color = [&](rgba value) {
+    cairo_set_source_rgba(cr, value.red_d(), value.green_d(),
+        value.blue_d(), value.alpha_d());
+  };
+
+  cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
+  cairo_paint(cr);
+
+  cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+
   color(m_style.border_color);
   cairo_paint(cr);
+
   int border = std::min(m_style.border, std::min(width, height) / 2);
-  color(m_style.background);
+
+  // color(m_style.background);
+  cairo_set_source_rgba(cr, 1., 0., 1.,0.5);
   cairo_rectangle(cr, border, border, width - 2 * border, height - 2 * border);
   cairo_fill(cr);
+
+  cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
   cairo_rectangle(cr, inset, inset, std::max(0, width - 2 * inset), std::max(0, height - 2 * inset));
   cairo_clip(cr);
   color(m_style.foreground);
@@ -390,25 +414,49 @@ void tooltip::render() {
   auto translated = m_connection.translate_coordinates(m_bar.x_data.window, m_connection.root(), 0, 0);
   xcb_rectangle_t bar{translated->dst_x, translated->dst_y, uint16_t(m_bar.size.w), uint16_t(m_bar.size.h)};
   auto rect = tooltip_position(area, bar, m_start, m_end, width, height, m_style.offset, m_bar.bottom);
+  // auto screen = m_connection.screen();
   auto screen = m_connection.screen();
+
+  auto bar_attributes =
+      m_connection.get_window_attributes(m_bar.x_data.window);
+
+  auto bar_geometry =
+      m_connection.get_geometry(m_bar.x_data.window);
+
+  auto visual_id = bar_attributes->visual;
+  auto depth = bar_geometry->depth;
   if (m_window == XCB_NONE) {
     m_window = m_connection.generate_id();
     // Override redirect avoids tiling, taskbar entries, focus, and struts. An
     // empty Shape input region makes the popup transparent to pointer input.
-    uint32_t attributes[] = {1};
-    xcb_create_window(m_connection, screen->root_depth, m_window, screen->root, rect.x, rect.y, rect.width, rect.height,
-        0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, XCB_CW_OVERRIDE_REDIRECT, attributes);
+    // uint32_t attributes[] = {1};
+    // xcb_create_window(m_connection, screen->root_depth, m_window, screen->root, rect.x, rect.y, rect.width, rect.height,
+    //     0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, XCB_CW_OVERRIDE_REDIRECT, attributes);
+    auto colormap = m_connection.generate_id();
+
+    xcb_create_colormap(m_connection, XCB_COLORMAP_ALLOC_NONE,
+        colormap, screen->root, visual_id);
+
+    uint32_t attributes[] = {0, 0, 1, colormap};
+
+    xcb_create_window(m_connection, depth, m_window, screen->root,
+        rect.x, rect.y, rect.width, rect.height,
+        0, XCB_WINDOW_CLASS_INPUT_OUTPUT, visual_id,
+        XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL |
+        XCB_CW_OVERRIDE_REDIRECT | XCB_CW_COLORMAP,
+        attributes);
+
+    xcb_free_colormap(m_connection, colormap);
     uint32_t hints[9] = {1, 0}; // ICCCM InputHint: never accept keyboard focus.
     xcb_change_property(
         m_connection, XCB_PROP_MODE_REPLACE, m_window, XCB_ATOM_WM_HINTS, XCB_ATOM_WM_HINTS, 32, 9, hints);
     const string name = "polybar-tooltip";
     xcb_change_property(
         m_connection, XCB_PROP_MODE_REPLACE, m_window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, name.size(), name.data());
-    auto type_atom = m_connection.intern_atom(false, strlen("_NET_WM_WINDOW_TYPE"), "_NET_WM_WINDOW_TYPE");
-    auto tooltip_atom =
-      m_connection.intern_atom(false, strlen("_NET_WM_WINDOW_TYPE_TOOLTIP"), "_NET_WM_WINDOW_TYPE_TOOLTIP");
-    xcb_atom_t type = tooltip_atom->atom;
-    xcb_change_property(m_connection, XCB_PROP_MODE_REPLACE, m_window, type_atom->atom, XCB_ATOM_ATOM, 32, 1, &type);
+    xcb_atom_t type = _NET_WM_WINDOW_TYPE_TOOLTIP;
+    // xcb_change_property(m_connection, XCB_PROP_MODE_REPLACE, m_window, _NET_WM_WINDOW_TYPE, type, 32, 1, &type);
+    xcb_change_property(m_connection, XCB_PROP_MODE_REPLACE, m_window,
+        _NET_WM_WINDOW_TYPE, XCB_ATOM_ATOM, 32, 1, &type);
     xcb_shape_rectangles(
         m_connection, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_INPUT, XCB_CLIP_ORDERING_UNSORTED, m_window, 0, 0, 0, nullptr);
   }
@@ -419,14 +467,25 @@ void tooltip::render() {
       XCB_CONFIG_WINDOW_STACK_MODE,
       geometry);
   // A background pixmap preserves pixels across expose events without another event sink.
+  // auto pixmap = m_connection.generate_id();
+  // xcb_create_pixmap(m_connection, screen->root_depth, pixmap, m_window, rect.width, rect.height);
+  // auto target = cairo_xcb_surface_create(
+  //     m_connection, pixmap, m_connection.visual_type_for_id(screen->root_visual), rect.width, rect.height);
+  // auto target_cr = cairo_create(target);
+  // cairo_set_source_surface(target_cr, surface, 0, 0);
+  // cairo_paint(target_cr);
+  // cairo_destroy(target_cr);
+  // cairo_surface_destroy(target);
   auto pixmap = m_connection.generate_id();
-  xcb_create_pixmap(m_connection, screen->root_depth, pixmap, m_window, rect.width, rect.height);
+  xcb_create_pixmap(m_connection, depth, pixmap, m_window, rect.width, rect.height);
   auto target = cairo_xcb_surface_create(
-      m_connection, pixmap, m_connection.visual_type_for_id(screen->root_visual), rect.width, rect.height);
+      m_connection, pixmap, m_connection.visual_type_for_id(visual_id), rect.width, rect.height);
   auto target_cr = cairo_create(target);
+  cairo_set_operator(target_cr, CAIRO_OPERATOR_SOURCE);
   cairo_set_source_surface(target_cr, surface, 0, 0);
   cairo_paint(target_cr);
   cairo_destroy(target_cr);
+  cairo_surface_flush(target);
   cairo_surface_destroy(target);
   xcb_change_window_attributes(m_connection, m_window, XCB_CW_BACK_PIXMAP, &pixmap);
   xcb_free_pixmap(m_connection, pixmap);
